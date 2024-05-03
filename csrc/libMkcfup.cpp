@@ -1193,10 +1193,10 @@ float inference(std::string &input_dir, std::string &output_dir, std::string &it
     total_time = total_time / CLOCKS_PER_SEC;
     float temp_fps = (end_frame - start_frame + 1) / total_time;
     fps += temp_fps;
-    cout << item << " seq, speed: " << temp_fps << " fps         " << endl;
+    // cout << item << " seq, speed: " << temp_fps << " fps         " << endl;
 
     //(175fps on OTB2013 at PC of Intel(R) Core(TM) i7-7700 CPU @ 3.60Ghz)
-    cout << "Average FPS: " << fps << endl;
+    // cout << "Average FPS: " << fps << endl;
     // waitKey(0);
     return fps;
 }
