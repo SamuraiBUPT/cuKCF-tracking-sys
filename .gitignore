@@ -1,0 +1,11 @@
+res/
+sequences/
+utils/
+
+csrc/build
+
+*.egg-info/
+
+*.so
+
+*build/

@@ -18,19 +18,39 @@
 
 
 
+# Roadmap
+
++ 初步实现MKCFup算法
+
++ 了解推理原理，做优化：
+
+  + 重构代码，这个代码根本无法应用在工业上，必须重构为一份可移植的code
+  + 可能的算法优化 - 能否使用CUDA：搭建起来之后，就尝试使用cuda算子进行操作，尝试进行性能优化
+  + 推理方面优化
+
+
+
 # Reference
 
 ## Papers
 
 With respect, we have read multiple awesome papers related to KCF algorithm, listed as follows:
 
-+ KCF算法：[High-Speed Tracking with Kernelized Correlation Filters](https://arxiv.org/pdf/1404.7584)
-+ 进阶：[High Speed Tracking With A Fourier Domain Kernelized Correlation Filter](https://arxiv.org/pdf/1811.03236v1)
-+ 进阶：[High-speed Tracking with Multi-kernel Correlation Filters](https://openaccess.thecvf.com/content_cvpr_2018/papers/Tang_High-Speed_Tracking_With_CVPR_2018_paper.pdf)
++ KCF算法：[High-Speed Tracking with Kernelized Correlation Filters](https://arxiv.org/pdf/1404.7584) **2014**
++ 进阶：[High Speed Tracking With A Fourier Domain Kernelized Correlation Filter](https://arxiv.org/pdf/1811.03236v1) **2018**
++ 进阶：[High-speed Tracking with Multi-kernel Correlation Filters](https://openaccess.thecvf.com/content_cvpr_2018/papers/Tang_High-Speed_Tracking_With_CVPR_2018_paper.pdf) **2018**
 
 
 
 ## Github Code
 
 + [KCF C++ Implementation](https://github.com/foolwood/KCF)
-+ [KCMF Implementation](https://github.com/tominute/MKCFup)
++ [MKCFup C++  Implementation](https://github.com/tominute/MKCFup) **Core**
++ [KCF using GPU](https://github.com/denismerigoux/GPU-tracking)
+
+
+
+## Blogs
+
++ [KCF CSDN Blog](https://blog.csdn.net/EasonCcc/article/details/79658928)
++ [KCF Zhihu Notebook](https://zhuanlan.zhihu.com/p/33543297)
