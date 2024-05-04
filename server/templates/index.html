@@ -25,6 +25,15 @@
             </div>
         </div>
 
+        <!-- 进度条 -->
+        <div class="layui-row" style="text-align: center; display: none;" id="progressContainer">
+            <div class="layui-col-xs12 layui-col-sm12 layui-col-md12" style="margin-top: 30px;">
+                <div class="layui-progress" lay-showpercent="true" lay-filter="demoProgress">
+                    <div class="layui-progress-bar" lay-percent="0%"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- 结果显示 -->
         <div class="layui-row" style="text-align: center;">
             <div class="layui-col-xs12 layui-col-sm12 layui-col-md12" style="margin-top: 30px;">
@@ -38,11 +47,12 @@
 
     <script src="//cdn.staticfile.org/layui/2.9.7/layui.js"></script>
     <script>
-        layui.use(['upload', 'layer'], function () {
+        layui.use(['upload', 'element', 'layer'], function () {
             var upload = layui.upload;
             var layer = layui.layer;
+            var element = layui.element;
 
-            // 文件上传
+            // 文件上传配置
             upload.render({
                 elem: '#uploadButton', // 绑定元素
                 url: '/upload', // 上传接口
@@ -50,6 +60,14 @@
                 method: 'post', // 请求方式
                 auto: false, // 自动上传
                 bindAction: '#uploadButton', // 绑定上传按钮
+                choose: function (obj) {
+                    // 文件选择后直接上传
+                    obj.preview(function (index, file, result) {
+                        console.log('A file has been chosen:', file.name);
+                        document.getElementById('progressContainer').style.display = 'block'; // 显示进度条
+                        obj.upload(index, file);
+                    });
+                },
                 done: function (res) {
                     // 上传完毕回调
                     document.getElementById('resultDisplay').innerHTML = res.message;
@@ -57,18 +75,21 @@
                 error: function () {
                     // 请求异常回调
                     layer.msg('上传失败，请重试', { icon: 5 });
-                },
-                choose: function (obj) {
-                    // 文件选择后直接上传
-                    //obj.preview(function (index, file, result) {
-                    //    obj.upload(index, file); // 文件上传
-                    //});
-                    obj.preview(function (index, file, result) {
-                        console.log('A file has been chosen:', file.name);
-                        obj.upload(index, file);
-                    });
                 }
             });
+
+            var evtSource = new EventSource('/progress');
+            evtSource.onmessage = function (event) {
+                var percent = event.data + '%';  // 从服务器接收到的数据
+                console.log(percent);
+                element.progress('demoProgress', percent);  // 使用 lay-filter 的值更新进度条
+
+                if (event.data === '100') {
+                    console.log('Processing complete');
+                    evtSource.close(); // 关闭SSE连接
+                    document.getElementById('progressContainer').style.display = 'none'; // 隐藏进度条
+                }
+            };
         });
     </script>
 </body>

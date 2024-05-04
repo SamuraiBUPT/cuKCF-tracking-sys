@@ -2,8 +2,9 @@ import mkcfup
 from fastapi import FastAPI, Request, File, UploadFile
 from zipfile import ZipFile
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 import os, shutil
+import time, asyncio
 
 import uvicorn
 
@@ -19,13 +20,30 @@ app = FastAPI()
 
 templates = Jinja2Templates(directory="templates")
 
+# 进度存储
+progress = {"value": 0}
+
+async def progress_generator():
+    global progress
+    while True:
+        await asyncio.sleep(0.2)  # 更新频率
+        yield f"data: {progress['value']}\n\n"
+        if progress['value'] == 100:
+            break
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     context = {'request': request}
     return templates.TemplateResponse("index.html", context)
 
+@app.get("/progress")
+async def progress_stream_response(request: Request):
+    return StreamingResponse(progress_generator(), media_type="text/event-stream")
+
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
+    global progress
+    progress['value'] = 20
     folder_name = file.filename.split('.')[0]
     upload_folder = f"uploads/zips/{folder_name}"
     unzip_folder = f"uploads/files/{folder_name}"
@@ -66,7 +84,17 @@ async def upload_file(file: UploadFile = File(...)):
     with open(os.path.join(output_dir, f"results_{folder_name}.txt"), "w") as f:
         pass
     
+    progress['value'] = 50
+    
     mkcfup.inference(input_dir, output_dir, folder_name)
+    
+    progress['value'] = 75
+    
+    # TODO: 在这里要把推理结果进行处理，然后进行其他操作，在这里才是100%
+    
+    # await asyncio.sleep(3)
+    
+    progress['value'] = 100
     
     return {"message": "File uploaded and unpacked successfully!"}
 
