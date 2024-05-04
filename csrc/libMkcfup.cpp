@@ -247,7 +247,6 @@ Mat circshift(const Mat &patch, int x_rot, int y_rot) {
     return rot_patch;
 }
 Mat gaussian_shaped_labels(double sigma, int dim1, int dim2) {
-
     Mat labels(dim2, dim1, CV_32FC1);
     int range_y[2] = {-dim2 / 2, dim2 - dim2 / 2};
     int range_x[2] = {-dim1 / 2, dim1 - dim1 / 2};
@@ -692,7 +691,7 @@ float inference(std::string &input_dir, std::string &output_dir, std::string &it
         fclose(fp_frame);
     }
 
-    // size initialize
+    // size initialize, according to the ground truth of the first frame
     int target_sz[2];
     target_sz[0] = init_gt[3];
     target_sz[1] = init_gt[2];
@@ -700,6 +699,7 @@ float inference(std::string &input_dir, std::string &output_dir, std::string &it
     int pos[2];
     pos[0] = init_gt[1];
     pos[1] = init_gt[0];
+
     int init_pos[2];
     init_pos[0] = pos[0] + target_sz[0] / 2;
     init_pos[1] = pos[1] + target_sz[1] / 2;
@@ -822,8 +822,9 @@ float inference(std::string &input_dir, std::string &output_dir, std::string &it
             interpScaleFactors[i] = pow(scale_step, interp_scale_exp_shift[i]);
         Mat ys(1, nScales, CV_32FC1);
         float *data = ys.ptr<float>(0);
-        for (int i = 0; i < nScales; ++i)
+        for (int i = 0; i < nScales; ++i) {
             data[i] = exp(-0.5 * (scale_exp_shift[i] * scale_exp_shift[i]) / (scale_sigma * scale_sigma));
+        }
         dft(ys, kk, DFT_COMPLEX_OUTPUT);
         split(kk, channels);
         complex_mat ysf;

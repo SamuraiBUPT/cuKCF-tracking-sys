@@ -11,11 +11,6 @@ import uvicorn
 INPUT_DIR = '/d_workspace/KCFs-tracking-sys/sequences'
 OUTPUT_DIR = '/d_workspace/KCFs-tracking-sys/res'
 
-# if __name__ == '__main__':
-#     item = 'Biker'
-#     fps = mkcfup.inference(INPUT_DIR, OUTPUT_DIR, item)
-#     print(f"FPS of {item} is {fps}")
-
 app = FastAPI()
 
 templates = Jinja2Templates(directory="templates")

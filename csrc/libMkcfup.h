@@ -53,4 +53,5 @@ model newtrainmodel(complex_mat &alphaf_num1, complex_mat &alphaf_num2, complex_
 complex_mat resizeDFT2(const complex_mat &input, const int *sz);
 complex_mat resizeDFT(const complex_mat &input, const int n);
 
+// The core API function
 float inference(std::string &input_dir, std::string &output_dir, std::string &item);
