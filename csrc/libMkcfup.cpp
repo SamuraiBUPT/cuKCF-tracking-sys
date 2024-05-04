@@ -664,7 +664,7 @@ float inference(std::string &input_dir, std::string &output_dir, std::string &it
         cout << "Cannot read the res file." << endl;
 
     // read the gt file
-    sprintf(buf, (input_dir + std::string("/") + item + std::string("/groundtruth_rect.txt")).c_str());
+    sprintf(buf, (input_dir + std::string("/groundtruth_rect.txt")).c_str());
     // sprintf(buf, "sequences/%s/groundtruth_rect.txt", name);
     FILE *fp_gt = fopen(buf, "r");
     int init_gt[4];
@@ -681,7 +681,7 @@ float inference(std::string &input_dir, std::string &output_dir, std::string &it
         fscanf(fp_gt, "%d %d %d %d", &init_gt[0], &init_gt[1], &init_gt[2], &init_gt[3]);
         fclose(fp_gt);
     }
-    sprintf(buf, (input_dir + std::string("/") + item + std::string("/frames.txt")).c_str());
+    sprintf(buf, (input_dir + std::string("/frames.txt")).c_str());
     // sprintf(buf, "sequences/%s/%s_frames.txt", name, name);
     FILE *fp_frame = fopen(buf, "r");
     int start_frame, end_frame;
@@ -760,7 +760,7 @@ float inference(std::string &input_dir, std::string &output_dir, std::string &it
     Mat cos_window = cosine_window_function(use_sz[1], use_sz[0]);
 
     // load the first image
-    sprintf(buf, (input_dir + std::string("/") + item + std::string("/img/%04d.jpg")).c_str(), start_frame);
+    sprintf(buf, (input_dir + std::string("/img/%04d.jpg")).c_str(), start_frame);
     // sprintf(buf, "./sequences/%s/img/%04d.jpg", name, start_frame);
     Mat img = imread(buf, -1);
     int imchannel = img.channels();
@@ -879,7 +879,7 @@ float inference(std::string &input_dir, std::string &output_dir, std::string &it
     // start tracking
     for (int frame = start_frame; frame <= end_frame; ++frame) {
         // load image
-        sprintf(buf, (input_dir + std::string("/") + item + std::string("/img/%04d.jpg")).c_str(), frame);
+        sprintf(buf, (input_dir + std::string("/img/%04d.jpg")).c_str(), frame);
         // sprintf(buf, "./sequences/%s/img/%04d.jpg", name, frame);
         Mat im = imread(buf, -1);
         if (im.empty()) {

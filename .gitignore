@@ -9,3 +9,12 @@ csrc/build
 *.so
 
 *build/
+
+server/result/*
+!server/result/.gitkeep
+
+server/uploads/files/*
+!server/uploads/files/.gitkeep
+
+server/uploads/zips/*
+!server/uploads/zips/.gitkeep

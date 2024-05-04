@@ -2,11 +2,75 @@
 <html>
 
 <head>
-    <title>{{ title }}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Model Results Display</title>
+    <link href="//cdn.staticfile.org/layui/2.9.7/css/layui.css" rel="stylesheet">
 </head>
 
 <body>
-    <h1>{{ message }}</h1>
+    <div class="layui-container" style="margin-top: 20px;">
+
+        <!-- 上传按钮 -->
+        <div class="layui-row" style="text-align: center;"> <!-- 顶部居中 -->
+            <div class="layui-col-xs12 layui-col-sm12 layui-col-md12">
+                <!-- 添加文件输入框 -->
+                <button id="uploadButton" class="layui-btn">上传文件</button>
+            </div>
+        </div>
+
+        <div class="layui-row" style="text-align: center; margin-top: 20px;"> <!-- 顶部居中 -->
+            <div class="layui-col-xs12 layui-col-sm12 layui-col-md12">
+                支持以压缩包形式上传文件。（.zip）
+            </div>
+        </div>
+
+        <!-- 结果显示 -->
+        <div class="layui-row" style="text-align: center;">
+            <div class="layui-col-xs12 layui-col-sm12 layui-col-md12" style="margin-top: 30px;">
+                <div id="resultDisplay" style="border: 1px solid #ccc; padding: 10px; height: 300px;">
+                    <!-- 结果将在这里显示 -->
+                    模型结果将在这里展示。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="//cdn.staticfile.org/layui/2.9.7/layui.js"></script>
+    <script>
+        layui.use(['upload', 'layer'], function () {
+            var upload = layui.upload;
+            var layer = layui.layer;
+
+            // 文件上传
+            upload.render({
+                elem: '#uploadButton', // 绑定元素
+                url: '/upload', // 上传接口
+                accept: 'file', // 允许上传的文件类型
+                method: 'post', // 请求方式
+                auto: false, // 自动上传
+                bindAction: '#uploadButton', // 绑定上传按钮
+                done: function (res) {
+                    // 上传完毕回调
+                    document.getElementById('resultDisplay').innerHTML = res.message;
+                },
+                error: function () {
+                    // 请求异常回调
+                    layer.msg('上传失败，请重试', { icon: 5 });
+                },
+                choose: function (obj) {
+                    // 文件选择后直接上传
+                    //obj.preview(function (index, file, result) {
+                    //    obj.upload(index, file); // 文件上传
+                    //});
+                    obj.preview(function (index, file, result) {
+                        console.log('A file has been chosen:', file.name);
+                        obj.upload(index, file);
+                    });
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>
