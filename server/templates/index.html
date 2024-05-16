@@ -6,6 +6,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Model Results Display</title>
     <link href="//cdn.staticfile.org/layui/2.9.7/css/layui.css" rel="stylesheet">
+    <link href="https://unpkg.com/cropperjs@1.5.12/dist/cropper.min.css" rel="stylesheet">
+    <style>
+        #resultDisplay {
+            border: 1px solid #ccc;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+        }
+        #resultDisplay img {
+            display: block;
+        }
+        .nav-button {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(255, 255, 255, 0.7);
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+        }
+        .nav-button.left {
+            left: 0;
+        }
+        .nav-button.right {
+            right: 0;
+        }
+    </style>
 </head>
 
 <body>
@@ -21,41 +50,50 @@
 
         <div class="layui-row" style="text-align: center; margin-top: 20px;"> <!-- 顶部居中 -->
             <div class="layui-col-xs12 layui-col-sm12 layui-col-md12">
-                支持以压缩包形式上传文件。（.zip）
-            </div>
-        </div>
-
-        <!-- 进度条 -->
-        <div class="layui-row" style="text-align: center; display: none;" id="progressContainer">
-            <div class="layui-col-xs12 layui-col-sm12 layui-col-md12" style="margin-top: 30px;">
-                <div class="layui-progress" lay-showpercent="true" lay-filter="demoProgress">
-                    <div class="layui-progress-bar" lay-percent="0%"></div>
-                </div>
+                支持上传视频文件（.mp4）
             </div>
         </div>
 
         <!-- 结果显示 -->
         <div class="layui-row" style="text-align: center;">
             <div class="layui-col-xs12 layui-col-sm12 layui-col-md12" style="margin-top: 30px;">
-                <div id="resultDisplay" style="border: 1px solid #ccc; padding: 10px; height: 300px;">
+                <div id="resultDisplay" style="border: 1px solid #ccc; padding: 10px; height: 600px;">
                     <!-- 结果将在这里显示 -->
                     模型结果将在这里展示。
                 </div>
+                <button class="nav-button left" id="prevButton">&lt;</button>
+                <button class="nav-button right" id="nextButton">&gt;</button>
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="layui-row" style="text-align: center; margin-top: 20px;">
+            <div class="layui-col-xs12 layui-col-sm12 layui-col-md12">
+                <button id="startSelectButton" class="layui-btn">开始截图</button>
+                <button id="submitCoordsButton" class="layui-btn">提交坐标</button>
             </div>
         </div>
     </div>
 
     <script src="//cdn.staticfile.org/layui/2.9.7/layui.js"></script>
+    <script src="https://unpkg.com/cropperjs@1.5.12/dist/cropper.min.js"></script>
     <script>
         layui.use(['upload', 'element', 'layer'], function () {
             var upload = layui.upload;
             var layer = layui.layer;
             var element = layui.element;
 
+            var cropper;
+            var image = document.createElement('img');
+            document.getElementById('resultDisplay').innerHTML = ""
+            document.getElementById('resultDisplay').appendChild(image);
+
+            var first_image_path_str = "";
+
             // 文件上传配置
             upload.render({
                 elem: '#uploadButton', // 绑定元素
-                url: '/upload', // 上传接口
+                url: '/slice', // 上传接口
                 accept: 'file', // 允许上传的文件类型
                 method: 'post', // 请求方式
                 auto: false, // 自动上传
@@ -64,13 +102,21 @@
                     // 文件选择后直接上传
                     obj.preview(function (index, file, result) {
                         console.log('A file has been chosen:', file.name);
-                        document.getElementById('progressContainer').style.display = 'block'; // 显示进度条
                         obj.upload(index, file);
                     });
                 },
                 done: function (res) {
                     // 上传完毕回调
-                    document.getElementById('resultDisplay').innerHTML = res.message;
+                    if (res.first_image_url) {
+                        
+                        image.src = res.first_image_url;
+                        first_image_path_str = res.first_image_url;
+                        if (cropper) {
+                            cropper.destroy();
+                        }
+                    } else {
+                        document.getElementById('resultDisplay').innerHTML = res.message;
+                    }
                 },
                 error: function () {
                     // 请求异常回调
@@ -78,18 +124,86 @@
                 }
             });
 
-            var evtSource = new EventSource('/progress');
-            evtSource.onmessage = function (event) {
-                var percent = event.data + '%';  // 从服务器接收到的数据
-                console.log(percent);
-                element.progress('demoProgress', percent);  // 使用 lay-filter 的值更新进度条
-
-                if (event.data === '100') {
-                    console.log('Processing complete');
-                    evtSource.close(); // 关闭SSE连接
-                    document.getElementById('progressContainer').style.display = 'none'; // 隐藏进度条
+            document.getElementById('startSelectButton').addEventListener('click', function () {
+                if (image.src) {
+                    if (cropper) {
+                        cropper.destroy();
+                    }
+                    cropper = new Cropper(image, {
+                        viewMode: 1,
+                        autoCropArea: false,
+                        movable: false,
+                        zoomable: false,
+                        rotatable: false,
+                        scalable: false,
+                        cropBoxResizable: true,
+                        ready: function () {
+                            // 确保裁剪框初始化时不会调整图片大小
+                            cropper.clear();
+                        }
+                    });
+                } else {
+                    layer.msg('请先上传图片', { icon: 5 });
                 }
-            };
+            });
+
+            document.getElementById('submitCoordsButton').addEventListener('click', function () {
+                if (cropper) {
+                    var cropData = cropper.getData();
+                    console.log(first_image_path_str)
+                    var coords = {
+                        startX: Math.round(cropData.x),
+                        startY: Math.round(cropData.y),
+                        width: Math.round(cropData.width),
+                        height: Math.round(cropData.height),
+                        img_path: first_image_path_str
+                    };
+                    fetch('/process_coords', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(coords)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Coordinates sent successfully:', data);
+                        if (data.processed_images) {
+                            processedImages = data.processed_images;
+                            currentImageIndex = 2;  // 从第二张图片开始显示
+                            updateDisplayedImage();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error sending coordinates:', error);
+                    });
+                } else {
+                    layer.msg('请先选择一个区域', { icon: 5 });
+                }
+            });
+
+            document.getElementById('prevButton').addEventListener('click', function () {
+                if (processedImages.length > 0) {
+                    currentImageIndex = (currentImageIndex - 1 + processedImages.length) % processedImages.length;
+                    updateDisplayedImage();
+                }
+            });
+
+            document.getElementById('nextButton').addEventListener('click', function () {
+                if (processedImages.length > 0) {
+                    currentImageIndex = (currentImageIndex + 1) % processedImages.length;
+                    updateDisplayedImage();
+                }
+            });
+
+            function updateDisplayedImage() {
+                if (processedImages.length > 0) {
+                    if (cropper) {
+                        cropper.destroy(); // 确保每次更新图片前销毁 cropper 实例
+                    }
+                    image.src = processedImages[currentImageIndex];
+                }
+            }
         });
     </script>
 </body>
