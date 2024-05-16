@@ -13,8 +13,11 @@ csrc/build
 server/result/*
 !server/result/.gitkeep
 
-server/uploads/files/*
-!server/uploads/files/.gitkeep
+server/uploads/images/*
+!server/uploads/images/.gitkeep
 
-server/uploads/zips/*
-!server/uploads/zips/.gitkeep
+server/uploads/videos/*
+!server/uploads/videos/.gitkeep
+
+# 所有的__pycache__
+**/__pycache__
