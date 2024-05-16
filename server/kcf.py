@@ -193,6 +193,7 @@ def main(video_path):
     first_img = cv2.imread(base_path + "/" + "00000000.jpg")
     cv2.imshow("First frame", first_img)
     roi = cv2.selectROI(img=first_img)
+
     tracker.initialize_first_frame(first_img, roi)
     files = os.listdir(base_path)
     files.sort()
