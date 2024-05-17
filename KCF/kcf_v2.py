@@ -1,11 +1,17 @@
+#   引入颜色特征，引入加权求平均决策ROI
+#   进步：至少不会去跟踪颜色太过于离谱的目标了
+#
+
 import cv2
 import numpy as np
 from numpy.fft import fft2, ifft2, fftshift
 import os
 
-#提取HOG特征
+# 提取HOG特征
+
+
 class HOGDescriptor:
-    #初始化参数
+    # 初始化参数
     def __init__(self, detection_window_size):
         self.detection_window_size = detection_window_size
         self.block_size = (8, 8)
@@ -14,15 +20,18 @@ class HOGDescriptor:
         self.num_bins = 9
         self.hog = cv2.HOGDescriptor(detection_window_size, self.block_size, self.block_stride,
                                      self.cell_size, self.num_bins)
-    #计算HOG特征
+    # 计算HOG特征
+
     def compute_feature(self, image):
         win_stride = self.detection_window_size
         w, h = self.detection_window_size
         w_block, h_block = self.block_stride
         w = w // w_block - 1
         h = h // h_block - 1
-        hist = self.hog.compute(img=image, winStride=win_stride, padding=(0, 0))
+        hist = self.hog.compute(
+            img=image, winStride=win_stride, padding=(0, 0))
         return hist.reshape(w, h, 36).transpose(2, 1, 0)
+
 
 class ObjectTracker:
     def __init__(self):
@@ -41,8 +50,9 @@ class ObjectTracker:
         self.alphaf = None
         self.template = None
         self.roi = None
+        self.previous_hist = None
 
-    #第一帧初始化
+    # 第一帧初始化
 
     def initialize_first_frame(self, image, roi):
         x, y, w, h = roi
@@ -54,20 +64,38 @@ class ObjectTracker:
         self.patch_h = int(h * scale) // 4 * 4 + 4
         self.patch_w = int(w * scale) // 4 * 4 + 4
         self.hog_descriptor = HOGDescriptor((self.patch_w, self.patch_h))
-        #print(self.patch_h, self.patch_w)
+        # print(self.patch_h, self.patch_w)
 
         feature = self.get_feature(image, roi)
-        #print(feature.shape)
         label = self.gaussian_peak(feature.shape[2], feature.shape[1])
 
         self.alphaf = self.train(feature, label, self.sigma, self.lambda_reg)
         self.template = feature
         self.roi = roi
-    #更新tracker位置    
+
+        # 提取并存储HSV颜色直方图
+        self.previous_hist = self.get_hsv_hist(image, roi)
+
+    # 更新tracker位置
     def update_tracker(self, image):
+        # 使用HOG特征计算ROI
+        hog_roi = self.update_hog_tracker(image)
+        # 使用HSV特征计算ROI
+        hsv_roi = self.update_hsv_tracker(image)
+
+        # 综合决策
+        final_roi = self.combine_rois(hog_roi, hsv_roi)
+
+        return final_roi
+
+    # 计算HOG特征，输出ROI
+    def update_hog_tracker(self, image):
         cx, cy, w, h = self.roi
         max_response = -1
-        #print(cx, cy, w, h)
+        best_dx, best_dy = 0, 0
+        best_w, best_h = w, h
+        best_feature_patch = None
+
         for scale in [0.8, 1.0, 1.2]:
             roi = map(int, (cx, cy, w * scale, h * scale))
             feature_patch = self.get_feature(image, roi)
@@ -77,36 +105,90 @@ class ObjectTracker:
             res = np.max(responses)
             if res > max_response:
                 max_response = res
-                dx = int((idx % width - width / 2) / self.scale_w)
-                dy = int((idx / width - height / 2) / self.scale_h)
+                best_dx = int((idx % width - width / 2) / self.scale_w)
+                best_dy = int((idx / width - height / 2) / self.scale_h)
                 best_w = int(w * scale)
                 best_h = int(h * scale)
                 best_feature_patch = feature_patch
-        #更新roi位置
-        self.roi = (cx + dx, cy + dy, best_w, best_h)
-        #更新template
-        self.template = self.template * (1 - self.update_rate) + best_feature_patch * self.update_rate
-        label = self.gaussian_peak(best_feature_patch.shape[2], best_feature_patch.shape[1])
-        new_alphaf = self.train(best_feature_patch, label, self.sigma, self.lambda_reg)
-        self.alphaf = self.alphaf * (1 - self.update_rate) + new_alphaf * self.update_rate
 
+        # 更新HOG模板
+        self.template = self.template * \
+            (1 - self.update_rate) + best_feature_patch * self.update_rate
+        label = self.gaussian_peak(
+            best_feature_patch.shape[2], best_feature_patch.shape[1])
+        new_alphaf = self.train(best_feature_patch, label,
+                                self.sigma, self.lambda_reg)
+        self.alphaf = self.alphaf * \
+            (1 - self.update_rate) + new_alphaf * self.update_rate
+
+        # 返回HOG计算的ROI
+        return (cx + best_dx, cy + best_dy, best_w, best_h)
+
+    def update_hsv_tracker(self, image):
         cx, cy, w, h = self.roi
-        return cx - w // 2, cy - h // 2, w, h
+        x = int(cx - w // 2)
+        y = int(cy - h // 2)
+        sub_image = image[y:y + h, x:x + w]
+        hsv_image = cv2.cvtColor(sub_image, cv2.COLOR_BGR2HSV)
+        current_hist = cv2.calcHist([hsv_image], [0, 1, 2], None, [
+                                    16, 16, 16], [0, 180, 0, 256, 0, 256])
+        cv2.normalize(current_hist, current_hist)
 
+        color_similarity = cv2.compareHist(
+            self.previous_hist, current_hist, cv2.HISTCMP_CORREL)
+        self.previous_hist = current_hist
+
+        best_cx, best_cy = cx, cy
+        best_similarity = color_similarity
+
+        for dx in range(-w//2, w//2, 5):
+            for dy in range(-h//2, h//2, 5):
+                test_roi = (cx + dx, cy + dy, w, h)
+                x = int(test_roi[0] - test_roi[2] // 2)
+                y = int(test_roi[1] - test_roi[3] // 2)
+                sub_image = image[y:y + test_roi[3], x:x + test_roi[2]]
+                hsv_image = cv2.cvtColor(sub_image, cv2.COLOR_BGR2HSV)
+                test_hist = cv2.calcHist([hsv_image], [0, 1, 2], None, [
+                                         16, 16, 16], [0, 180, 0, 256, 0, 256])
+                cv2.normalize(test_hist, test_hist)
+                similarity = cv2.compareHist(
+                    self.previous_hist, test_hist, cv2.HISTCMP_CORREL)
+                if similarity > best_similarity:
+                    best_similarity = similarity
+                    best_cx, best_cy = cx + dx, cy + dy
+
+        return (best_cx, best_cy, w, h)
+
+    def combine_rois(self, hog_roi, hsv_roi):
+        # 使用加权平均的方法综合两个ROI
+        alpha = 0.5
+        hog_cx, hog_cy, hog_w, hog_h = hog_roi
+        hsv_cx, hsv_cy, hsv_w, hsv_h = hsv_roi
+
+        final_cx = int(alpha * hog_cx + (1 - alpha) * hsv_cx)
+        final_cy = int(alpha * hog_cy + (1 - alpha) * hsv_cy)
+        final_w = int(alpha * hog_w + (1 - alpha) * hsv_w)
+        final_h = int(alpha * hog_h + (1 - alpha) * hsv_h)
+
+        return final_cx - final_w // 2, final_cy - final_h // 2, final_w, final_h
+
+    # HOG 特征计算
     def get_feature(self, image, roi):
         cx, cy, w, h = roi
         w = int(w * self.padding) // 2 * 2
         h = int(h * self.padding) // 2 * 2
         x = int(cx - w // 2)
         y = int(cy - h // 2)
-        #print(x, y, w, h)
+        # print(x, y, w, h)
 
         sub_image = image[y:y + h, x:x + w, :]
-        resized_image = cv2.resize(src=sub_image, dsize=(self.patch_w, self.patch_h))
+        resized_image = cv2.resize(
+            src=sub_image, dsize=(self.patch_w, self.patch_h))
 
         if self.gray_feature:
             feature = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
-            feature = feature.reshape(1, self.patch_h, self.patch_w) / 255.0 - 0.5
+            feature = feature.reshape(
+                1, self.patch_h, self.patch_w) / 255.0 - 0.5
         else:
             feature = self.hog_descriptor.compute_feature(resized_image)
 
@@ -121,19 +203,33 @@ class ObjectTracker:
         hann2d = hann2t * hann1t
         feature = feature * hann2d
         return feature
-    
-    #计算高斯峰值
+
+    def get_hsv_hist(self, image, roi):
+        cx, cy, w, h = roi
+        x = int(cx - w // 2)
+        y = int(cy - h // 2)
+        sub_image = image[y:y + h, x:x + w]
+        hsv_image = cv2.cvtColor(sub_image, cv2.COLOR_BGR2HSV)
+        hist = cv2.calcHist([hsv_image], [0, 1, 2], None, [
+                            16, 16, 16], [0, 180, 0, 256, 0, 256])
+        cv2.normalize(hist, hist)
+        return hist
+
+    # 计算高斯峰值
     def gaussian_peak(self, w, h):
         output_sigma = 0.125
         sigma = np.sqrt(w * h) / self.padding * output_sigma
         half_height, half_width = h // 2, w // 2
 
-        y, x = np.mgrid[-half_height:-half_height + h, -half_width:-half_width + w]
+        y, x = np.mgrid[-half_height:-half_height +
+                        h, -half_width:-half_width + w]
         x = x + (1 - w % 2) / 2.
         y = y + (1 - h % 2) / 2.
-        g = 1. / (2. * np.pi * sigma ** 2) * np.exp(-((x ** 2 + y ** 2) / (2. * sigma ** 2)))
+        g = 1. / (2. * np.pi * sigma ** 2) * \
+            np.exp(-((x ** 2 + y ** 2) / (2. * sigma ** 2)))
         return g
-    #傅立叶变换，计算核相关
+    # 傅立叶变换，计算核相关
+
     def kernel_correlation(self, x1, x2, sigma):
         fx1 = fft2(x1)
         fx2 = fft2(x2)
@@ -194,5 +290,5 @@ def main(video_path):
                 continue
 
 
-test_video_path = 'video/car.mp4'
+test_video_path = 'video/Ke.mp4'
 main(test_video_path)
