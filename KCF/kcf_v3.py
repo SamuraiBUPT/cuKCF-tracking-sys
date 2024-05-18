@@ -3,9 +3,61 @@ import numpy as np
 from numpy.fft import fft2, ifft2, fftshift
 import os
 
+
+class KalmanFilter:
+    def __init__(self, dt, std_acc, std_meas):
+        self.dt = dt  # 时间步长
+        self.std_acc = std_acc  # 过程噪声标准差
+        self.std_meas = std_meas  # 观测噪声标准差
+
+        # 初始状态
+        self.x = np.matrix([[0], [0], [0], [0]])  # 状态向量 [x, y, vx, vy]
+
+        # 状态转移矩阵
+        self.F = np.matrix([[1, 0, self.dt, 0],
+                            [0, 1, 0, self.dt],
+                            [0, 0, 1, 0],
+                            [0, 0, 0, 1]])
+
+        # 过程噪声协方差矩阵
+        self.Q = np.matrix([[self.dt**4/4, 0, self.dt**3/2, 0],
+                            [0, self.dt**4/4, 0, self.dt**3/2],
+                            [self.dt**3/2, 0, self.dt**2, 0],
+                            [0, self.dt**3/2, 0, self.dt**2]]) * self.std_acc**2
+
+        # 观测矩阵
+        self.H = np.matrix([[1, 0, 0, 0],
+                            [0, 1, 0, 0]])
+
+        # 观测噪声协方差矩阵
+        self.R = np.matrix([[std_meas**2, 0],
+                            [0, std_meas**2]])
+
+        # 初始协方差矩阵
+        self.P = np.eye(4)
+
+    def predict(self):
+        # 预测状态
+        self.x = np.dot(self.F, self.x)
+        # 预测协方差
+        self.P = np.dot(np.dot(self.F, self.P), self.F.T) + self.Q
+        return self.x[:2]
+
+    def update(self, z):
+        # 计算卡尔曼增益
+        S = np.dot(self.H, np.dot(self.P, self.H.T)) + self.R
+        K = np.dot(np.dot(self.P, self.H.T), np.linalg.inv(S))
+
+        # 更新状态
+        self.x = self.x + np.dot(K, (z - np.dot(self.H, self.x)))
+
+        # 更新协方差
+        I = np.eye(self.H.shape[1])
+        self.P = (I - np.dot(K, self.H)) * self.P
+        return self.x[:2]
+
+
 # 提取HOG特征
-
-
 class HOGDescriptor:
     # 初始化参数
     def __init__(self, detection_window_size):
@@ -48,8 +100,10 @@ class ObjectTracker:
         self.roi = None
         self.previous_hist = None
 
-    # 第一帧初始化
+        # 初始化卡尔曼滤波器
+        self.kalman_filter = KalmanFilter(dt=1, std_acc=0.5, std_meas=0.1)
 
+    # 第一帧初始化
     def initialize_first_frame(self, image, roi):
         x, y, w, h = roi
         center_x = x + w // 2
@@ -72,8 +126,8 @@ class ObjectTracker:
         # 提取并存储HSV颜色直方图
         self.previous_hist = self.get_hsv_hist(image, roi)
 
-        # 转换图像为灰度图并存储
-        self.prev_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # 初始化卡尔曼滤波器的状态
+        self.kalman_filter.x[:2] = np.matrix([[center_x], [center_y]])
 
     # 更新tracker位置
     def update_tracker(self, image):
@@ -81,12 +135,24 @@ class ObjectTracker:
         hog_roi = self.update_hog_tracker(image)
         # 使用HSV特征计算ROI
         hsv_roi = self.update_hsv_tracker(image)
-        # 使用光流特征计算ROI
-        flow_roi = self.update_optical_flow(image)
 
         # 综合决策
-        final_roi = self.combine_rois(
-            [hog_roi, hsv_roi, flow_roi], [1.5, 0.2, 0.2])
+        final_roi = self.combine_rois(hog_roi, hsv_roi)
+        # print(f"computed roi: {final_roi}")
+
+        # 使用卡尔曼滤波器预测位置
+        pred_position = self.kalman_filter.predict()
+
+        # 结合卡尔曼滤波器的预测结果更新ROI
+        final_cx, final_cy, final_w, final_h = final_roi
+        final_cx = int(0.5 * final_cx + 0.5 * pred_position[0, 0])
+        final_cy = int(0.5 * final_cy + 0.5 * pred_position[1, 0])
+        final_roi = (final_cx, final_cy, final_w, final_h)
+
+        # 更新卡尔曼滤波器状态
+        self.kalman_filter.update(np.matrix([[final_cx], [final_cy]]))
+
+        # print(f"after kalman filter: {final_roi}")
 
         return final_roi
 
@@ -98,7 +164,7 @@ class ObjectTracker:
         best_w, best_h = w, h
         best_feature_patch = None
 
-        for scale in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0, 1.2]:
+        for scale in [0.8, 1.0, 1.2]:
             roi = map(int, (cx, cy, w * scale, h * scale))
             feature_patch = self.get_feature(image, roi)
             responses = self.detect(self.template, feature_patch, self.sigma)
@@ -149,6 +215,8 @@ class ObjectTracker:
                 x = int(test_roi[0] - test_roi[2] // 2)
                 y = int(test_roi[1] - test_roi[3] // 2)
                 sub_image = image[y:y + test_roi[3], x:x + test_roi[2]]
+                if sub_image is None or sub_image.size == 0:
+                    continue
                 hsv_image = cv2.cvtColor(sub_image, cv2.COLOR_BGR2HSV)
                 test_hist = cv2.calcHist([hsv_image], [0, 1, 2], None, [
                                          16, 16, 16], [0, 180, 0, 256, 0, 256])
@@ -161,79 +229,31 @@ class ObjectTracker:
 
         return (best_cx, best_cy, w, h)
 
-    def update_optical_flow(self, image):
-        cx, cy, w, h = self.roi
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    def combine_rois(self, hog_roi, hsv_roi):
+        # 使用加权平均的方法综合两个ROI
+        alpha = 0.5
+        hog_cx, hog_cy, hog_w, hog_h = hog_roi
+        hsv_cx, hsv_cy, hsv_w, hsv_h = hsv_roi
 
-        # 使用Shi-Tomasi角点检测获取前一帧的特征点
-        x = int(cx - w // 2)
-        y = int(cy - h // 2)
-        roi_gray_prev = self.prev_gray[y:y + h, x:x + w]
-        p0 = cv2.goodFeaturesToTrack(
-            roi_gray_prev, maxCorners=100, qualityLevel=0.3, minDistance=7, blockSize=7)
+        final_cx = int(alpha * hog_cx + (1 - alpha) * hsv_cx)
+        final_cy = int(alpha * hog_cy + (1 - alpha) * hsv_cy)
+        final_w = int(alpha * hog_w + (1 - alpha) * hsv_w)
+        final_h = int(alpha * hog_h + (1 - alpha) * hsv_h)
 
-        if p0 is not None:
-            # 转换前一帧特征点坐标为全图坐标
-            p0[:, 0, 0] += x
-            p0[:, 0, 1] += y
+        return final_cx - final_w // 2, final_cy - final_h // 2, final_w, final_h
 
-            # 使用Shi-Tomasi角点检测获取当前帧的特征点
-            roi_gray_current = gray[y:y + h, x:x + w]
-            p1_init = cv2.goodFeaturesToTrack(
-                roi_gray_current, maxCorners=100, qualityLevel=0.3, minDistance=7, blockSize=7)
-
-            if p1_init is not None:
-                # 转换当前帧特征点坐标为全图坐标
-                p1_init[:, 0, 0] += x
-                p1_init[:, 0, 1] += y
-
-                # 计算光流
-                p1, st, err = cv2.calcOpticalFlowPyrLK(
-                    self.prev_gray, gray, p0, p1_init)
-
-                # 计算有效的运动矢量
-                good_new = p1[st == 1]
-                good_old = p0[st == 1]
-                flow_dx = np.mean(good_new[:, 0] - good_old[:, 0])
-                flow_dy = np.mean(good_new[:, 1] - good_old[:, 1])
-
-                # 更新前一帧的灰度图像
-                self.prev_gray = gray
-
-                return (cx + int(flow_dx), cy + int(flow_dy), w, h)
-            else:
-                # 如果当前帧没有检测到特征点，则保持原ROI
-                self.prev_gray = gray
-                return (cx, cy, w, h)
-        else:
-            # 如果前一帧没有检测到特征点，则保持原ROI
-            self.prev_gray = gray
-            return (cx, cy, w, h)
-
-    def combine_rois(self, rois, weights=None):
-        if weights is None:
-            weights = [1 / len(rois)] * len(rois)
-
-        total_weight = sum(weights)
-        final_cx = sum(roi[0] * weight for roi,
-                       weight in zip(rois, weights)) / total_weight
-        final_cy = sum(roi[1] * weight for roi,
-                       weight in zip(rois, weights)) / total_weight
-        final_w = sum(roi[2] * weight for roi,
-                      weight in zip(rois, weights)) / total_weight
-        final_h = sum(roi[3] * weight for roi,
-                      weight in zip(rois, weights)) / total_weight
-
-        return int(final_cx - final_w // 2), int(final_cy - final_h // 2), int(final_w), int(final_h)
-
-    # HOG 特征计算
     def get_feature(self, image, roi):
         cx, cy, w, h = roi
         w = int(w * self.padding) // 2 * 2
         h = int(h * self.padding) // 2 * 2
         x = int(cx - w // 2)
         y = int(cy - h // 2)
-        # print(x, y, w, h)
+
+        # 确保ROI在图像边界内
+        x = max(0, x)
+        y = max(0, y)
+        w = min(w, image.shape[1] - x)
+        h = min(h, image.shape[0] - y)
 
         sub_image = image[y:y + h, x:x + w, :]
         resized_image = cv2.resize(
@@ -344,5 +364,6 @@ def main(video_path):
                 continue
 
 
-test_video_path = 'video/Ke.mp4'
-main(test_video_path)
+if __name__ == '__main__':
+    test_video_path = 'video/Ke.mp4'
+    main(test_video_path)

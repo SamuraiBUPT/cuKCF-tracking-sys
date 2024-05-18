@@ -21,3 +21,6 @@ server/uploads/videos/*
 
 # 所有的__pycache__
 **/__pycache__
+
+# 所有的测试集
+KCF/benchmark_dataset/*

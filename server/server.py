@@ -1,21 +1,20 @@
-import mkcfup
+# import mkcfup
 from fastapi import FastAPI, Request, File, UploadFile
 from zipfile import ZipFile
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 import os
 import shutil
 import time
 import asyncio
+import cv2
 
 import uvicorn
 
 # import kcf
-from kcf import inference
-
-INPUT_DIR = '/d_workspace/KCFs-tracking-sys/sequences'
-OUTPUT_DIR = '/d_workspace/KCFs-tracking-sys/res'
+from kcf import ObjectTracker
 
 app = FastAPI()
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -23,6 +22,14 @@ templates = Jinja2Templates(directory="templates")
 
 # 进度存储
 progress = {"value": 0}
+
+
+class Coords(BaseModel):
+    startX: int
+    startY: int
+    width: int
+    height: int
+    img_path: str
 
 
 async def progress_generator():
@@ -45,64 +52,68 @@ async def progress_stream_response(request: Request):
     return StreamingResponse(progress_generator(), media_type="text/event-stream")
 
 
-@app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    global progress
-    progress['value'] = 20
-    folder_name = file.filename.split('.')[0]
-    upload_folder = f"uploads/zips/{folder_name}"
-    unzip_folder = f"uploads/files/{folder_name}"
+@app.post("/slice")
+async def slice_video(file: UploadFile = File(...)):
+    # save this file
+    filepath = os.path.join("uploads/videos", file.filename)
+    with open(filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
-    # 如果文件夹已经存在，则删除
-    if os.path.exists(upload_folder):
-        shutil.rmtree(upload_folder)
-    if os.path.exists(unzip_folder):
-        shutil.rmtree(unzip_folder)
+    # silce this video to images
+    video = cv2.VideoCapture(filepath)
+    video_name = os.path.splitext(os.path.basename(filepath))[0]
 
-    # 创建文件夹
-    os.makedirs(upload_folder)
-    os.makedirs(unzip_folder)
+    success, image = video.read()
+    count = 0
 
-    # Correct the file location path
-    file_location = os.path.join(upload_folder, file.filename)
+    out_path = 'uploads/images/' + video_name   # create a folder
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
 
+    while success:
+        cv2.imwrite(out_path + '/%08d.jpg' % count, image)  # slice
+        count += 1
+        success, image = video.read()
+    video.release()
+
+    base_path = out_path
+    first_image = base_path + '/00000001.jpg'
+
+    return {"message": "File uploaded and unpacked successfully!",
+            "first_image_url": first_image}
+
+
+@app.post("/process_coords")
+async def process_coords(coords: Coords):
+    # 在这里处理接收到的坐标
+    # print(f"Received coordinates: {coords}")
+
+    x, y, w, h, img_path = coords.startX, coords.startY, coords.width, coords.height, coords.img_path
+
+    base_path = os.path.dirname(img_path)
+    tracker = ObjectTracker()
+
+    processedImages = []
     try:
-        # 保存文件到 uploads/zips 文件夹
-        with open(file_location, "wb+") as file_object:
-            file_object.write(await file.read())
-
-        # 解压缩文件到指定目录
-        with ZipFile(file_location, 'r') as zip_ref:
-            zip_ref.extractall(unzip_folder)
+        first_image = cv2.imread(img_path)
+        roi = (x, y, w, h)
+        tracker.initialize_first_frame(first_image, roi)
+        files = os.listdir(base_path)
+        files.sort()
+        for file in files:
+            if file.endswith('.jpg'):
+                path = base_path + "/" + file
+                img = cv2.imread(path)
+                x, y, w, h = tracker.update_tracker(img)
+                # print(x, y, w, h)
+                cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 255), 1)
+                cv2.imwrite(path, img)
+                processedImages.append(path)
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        print(e)
+        return {"message": "Error occurred while processing coordinates"}
 
-    # inference
-    items = os.listdir(unzip_folder)
-    new_path = None
-    while len(items) < 2:
-        new_path = os.path.join(unzip_folder, items[0])
-        items = os.listdir(new_path)
-    input_dir = new_path
-    output_dir = "result"
-
-    # create a txt file
-    with open(os.path.join(output_dir, f"results_{folder_name}.txt"), "w") as f:
-        pass
-
-    progress['value'] = 50
-
-    mkcfup.inference(input_dir, output_dir, folder_name)
-
-    progress['value'] = 75
-
-    # TODO: 在这里要把推理结果进行处理，然后进行其他操作，在这里才是100%
-
-    # await asyncio.sleep(3)
-
-    progress['value'] = 100
-
-    return {"message": "File uploaded and unpacked successfully!"}
+    return {"processed_images": processedImages}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
