@@ -37,6 +37,7 @@ def inference(benchmark_path: str):
     # iterate each sequence
     all_roi_results = []
     all_gt_results = []
+    fps_list = []
     for seq_path in dirs:
         # for seq_path in ['David']:
         print(f"evaluating sequence: {seq_path}")
@@ -99,14 +100,15 @@ def inference(benchmark_path: str):
         fps = cnt / (end - start)
         print(f"FPS: {fps:.2f}")
 
+        fps_list.append(fps)
         all_roi_results.append(roi_results)
         all_gt_results.append(gt)
-    return all_roi_results, all_gt_results
+    return all_roi_results, all_gt_results, fps_list
 
 
 if __name__ == '__main__':
     benchmark_path = './benchmark_dataset'
-    roi_results, gt_results = inference(benchmark_path)
+    roi_results, gt_results, fps_list = inference(benchmark_path)
 
     # Flatten the results for all sequences
     roi_results = np.concatenate(roi_results)
@@ -114,6 +116,8 @@ if __name__ == '__main__':
 
     thresholds = range(1, 51)  # 1到50的距离阈值
     precision_curve = calculate_precision(roi_results, gt, thresholds)
+
+    print(f"Average FPS: {np.mean(fps_list):.2f}")
 
     plt.plot(thresholds, precision_curve)
     plt.xlabel('Location error threshold')
