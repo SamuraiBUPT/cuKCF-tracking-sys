@@ -1,4 +1,4 @@
-from kcf_v3 import ObjectTracker
+from kcf_v4 import ObjectTracker
 import cv2
 import numpy as np
 import os
