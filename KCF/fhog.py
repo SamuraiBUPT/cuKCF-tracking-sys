@@ -46,6 +46,14 @@ def func1(dx, dy, boundary_x, boundary_y, height, width, numChannels):
     return r, alfa
 
 
+def func2_cu(r, alfa, nearest, w, k, height, width, sizeX, sizeY, p, stringSize):
+    pass
+
+
+def func2_tensor(r, alfa, nearest, w, k, height, width, sizeX, sizeY, p, stringSize):
+    pass
+
+
 @jit
 def func2(dx, dy, boundary_x, boundary_y, r, alfa, nearest, w, k, height, width, sizeX, sizeY, p, stringSize):
     mapp = np.zeros((sizeX * sizeY * p), np.float32)
@@ -208,6 +216,9 @@ def getFeatureMaps(image, k, mapp):
     # 500x speedup
     mapp['map'] = func2(dx, dy, boundary_x, boundary_y, r, alfa, nearest,
                         w, k, height, width, sizeX, sizeY, p, stringSize)  # with @jit
+
+    # notice: we will just use the data above, to make a cuda op
+    exit(0)  # TODO: remove this line
     # ~0.001s
 
     return mapp

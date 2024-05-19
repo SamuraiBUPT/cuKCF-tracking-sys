@@ -105,9 +105,13 @@ python3 server.py
 
 
 
++ 先找是否是精度问题
++ 再考虑profile bottleneck
++ 再考虑cuda优化
 
 
 
+__1.1 精度问题__
 
 我认为计算精确度的问题，应该是精度的问题，不是其他的。
 
@@ -117,15 +121,7 @@ python3 server.py
 
 
 
-速度优化：找一下bottleneck。再想怎么弄cuda
-
-
-
-+ 先找是否是精度问题
-+ 再考虑profile bottleneck
-+ 再考虑cuda优化
-
-
+__1.2 bottleneck分析__
 
 ![image-20240519001146457](D:\Code_Space\Cplusplus\cpp_projects\workspace\KCFs-tracking-sys\README\profile1.png)
 
