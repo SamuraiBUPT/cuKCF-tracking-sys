@@ -103,9 +103,7 @@ python3 server.py
 
 要使用cuda优化，不能盲目着手，要找出来到底什么地方是整个算法的bottleneck，并且使用cuda计算还要考虑memcpy的时间，如果时间瓶颈都比较小的话，那就没必要进行cuda计算。（因为无法trade off）
 
-```bash
 
-```
 
 
 
@@ -115,9 +113,36 @@ python3 server.py
 
 如果尝试使用更高的精度，也许效果会更好。
 
+**结论**：并没有更好
+
 
 
 速度优化：找一下bottleneck。再想怎么弄cuda
+
+
+
++ 先找是否是精度问题
++ 再考虑profile bottleneck
++ 再考虑cuda优化
+
+
+
+![image-20240519001146457](D:\Code_Space\Cplusplus\cpp_projects\workspace\KCFs-tracking-sys\README\profile1.png)
+
+
+
+__初步profile结果：__
+
++ NormalizeAndTruncate里面调用了**func3.**  - rank No.3
++ getFeatureMaps调用了：**func1, func2**  - rank No.4, No.7
++ PCAFeatureMaps调用了：**func4**  - rank No.10
++ 还有一个就是**gaussianCorrelation**  - rank No.5
+  + 包括mulSpectrums
++ FFTD和dft其实是一伙的。（fftd函数内部调用的就是cv2.dft） - rank No.2
+
+
+
+
 
 
 

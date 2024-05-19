@@ -265,6 +265,7 @@ class KCFTracker:
         if (self._hogfeatures):
             mapp = {'sizeX': 0, 'sizeY': 0, 'numFeatures': 0, 'map': 0}
             mapp = fhog.getFeatureMaps(z, self.cell_size, mapp)
+            # print(mapp)
             mapp = fhog.normalizeAndTruncate(mapp, 0.2)
             mapp = fhog.PCAFeatureMaps(mapp)
             self.size_patch = list(

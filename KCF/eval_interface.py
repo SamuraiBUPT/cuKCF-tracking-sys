@@ -5,6 +5,9 @@ import os
 import time
 import matplotlib.pyplot as plt
 
+import cProfile
+import pstats
+
 
 def calculate_precision(roi_results, gt, thresholds):
     """
@@ -106,7 +109,7 @@ def inference(benchmark_path: str):
     return all_roi_results, all_gt_results, fps_list
 
 
-if __name__ == '__main__':
+def main():
     benchmark_path = './benchmark_dataset'
     roi_results, gt_results, fps_list = inference(benchmark_path)
 
@@ -119,8 +122,24 @@ if __name__ == '__main__':
 
     print(f"Average FPS: {np.mean(fps_list):.2f}")
 
+    # 计算 Mean precision (20 px)
+    mean_precision_20px = precision_curve[19]  # 20 px 对应的是索引 19
+    print(f"Mean precision (20 px): {mean_precision_20px:.2f}")
+
     plt.plot(thresholds, precision_curve)
     plt.xlabel('Location error threshold')
     plt.ylabel('Precision')
     plt.title('Precision plot')
     plt.show()
+
+
+if __name__ == '__main__':
+    # main()
+
+    # 可选：性能分析
+    cProfile.run('main()', 'profile_output.prof')
+
+    # 可选：打印性能分析结果
+    with open('profile_output.txt', 'w') as f:
+        stats = pstats.Stats('profile_output.prof', stream=f)
+        stats.strip_dirs().sort_stats('cumulative').print_stats(10)

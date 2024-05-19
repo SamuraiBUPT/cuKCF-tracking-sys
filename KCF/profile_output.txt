@@ -1,0 +1,20 @@
+Sun May 19 00:05:54 2024    profile_output.prof
+
+         69491554 function calls (69002535 primitive calls) in 199.178 seconds
+
+   Ordered by: cumulative time
+   List reduced from 5097 to 10 due to restriction <10>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    219/1    0.001    0.000  199.184  199.184 {built-in method builtins.exec}
+        1    0.000    0.000  199.184  199.184 eval_interface.py:112(main)
+        1    0.754    0.754  184.778  184.778 eval_interface.py:36(inference)
+    26779    0.045    0.000  138.504    0.005 kcf_v4.py:395(update_tracker)
+    26779    0.470    0.000  138.459    0.005 kcf_v4.py:330(update)
+   107165    2.166    0.000   82.030    0.001 kcf_v4.py:226(getFeatures)
+   107165   12.512    0.000   57.485    0.001 kcf_v4.py:193(gaussianCorrelation)
+    80337    0.593    0.000   46.219    0.001 kcf_v4.py:292(detect)
+    26828   39.656    0.001   39.656    0.001 {imread}
+   107165    6.290    0.000   36.645    0.000 fhog.py:143(getFeatureMaps)
+
+
