@@ -22,12 +22,12 @@
 
 + [x] 初步实现MKCFup算法 
 
-+ [ ] 了解推理原理，做优化：
++ [x] 了解推理原理，做优化：
   + [x] 重构代码，这个代码根本无法应用在工业上，必须重构为一份可移植的code
-  + [ ] 可能的算法优化 - 能否使用CUDA、SIMD指令集
+  + [x] 可能的算法优化 - 能否使用CUDA、SIMD指令集
   + [ ] 推理方面优化
-+ [ ] 重构一版Python版本的算法
-+ [ ] 前后端的软件工程问题：有一个图像标注的过程转化
++ [x] 重构一版Python版本的算法
++ [x] 前后端的软件工程问题：有一个图像标注的过程转化
 
 
 
@@ -37,45 +37,21 @@
 
 
 
-__1. 安装opencv__
-
-首先您需要安装opencv C++ 3.4的库
+__1. 安装Python相关依赖库__
 
 ```bash
-git clone https://github.com/opencv/opencv.git
-cd opencv
-git checkout 3.4
-
-mkdir build && cd build
-cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local ..
-make -j$(nproc)  # 使用所有可用核心编译
-make install
+pip install numba	# 主要使用numba来进行加速
+pip install fastapi[all]	# 推理部署
 ```
 
-注意：如果使用的是opencv4以上的版本，可能会遇到编译问题。
 
 
 
-__2. 安装fftw3__
+
+__2. (可选)编译运行我们制作的CUDA推理__
 
 ```bash
-apt-get install libfftw3-dev
-```
-
-
-
-__3. 安装fastapi, jinjia2等Python包__
-
-```
-pip install fastapi[all]
-```
-
-
-
-__4. 编译运行我们制作的Python binding__
-
-```bash
-git clone https://github.com/SamuraiBUPT/MKCFup-tracking-sys.git
+git clone https://github.com/SamuraiBUPT/KCF-tracking-sys.git
 cd MKCFup-tracking-sys
 pip install -e .
 ```
@@ -84,7 +60,9 @@ pip install -e .
 
 
 
-然后您可以直接使用我们提供的基于fastapi的server进行测试：
+__3. 启动推理__
+
+然后您可以直接使用我们提供的基于`fastapi`的server进行测试：
 
 ```bash
 cd server
@@ -92,6 +70,23 @@ python3 server.py
 ```
 
 在`localhost:8000`您可以进行交互与查看部署结果。
+
+
+
+__4. 检查我们的实验结果__
+
+您需要先下载数据集，我们已经上传至[百度云](https://pan.baidu.com/s/1uOhKJgo-B3ZiKuc2RJi2TQ?pwd=5rj6)
+
+然后解压到`KCF/benchmark_dataset`路径下。您的项目结构应该看起来像这样：
+
+![image-20240520155941149](docs/stucture.png)
+
+可以开始运行实验代码：
+
+```bash
+cd KCF
+python3 eval_inference.py
+```
 
 
 
@@ -123,7 +118,7 @@ __1.1 精度问题__
 
 __1.2 bottleneck分析__
 
-![image-20240519001146457](D:\Code_Space\Cplusplus\cpp_projects\workspace\KCFs-tracking-sys\README\profile1.png)
+![image-20240519001146457](docs/profile1.png)
 
 
 
@@ -137,8 +132,6 @@ __初步profile结果：__
 + FFTD和dft其实是一伙的。（fftd函数内部调用的就是cv2.dft） - rank No.2
 
 
-
-width=48
 
 
 
