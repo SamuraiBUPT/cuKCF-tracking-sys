@@ -39,6 +39,16 @@
 
 __1. 安装Python相关依赖库__
 
+首先是安装CMake与Libtorch(有可能会用到)
+
+```bash
+sudo apt install cmake
+```
+
+至于libtorch的下载方法，您可以查阅：[PyTorch官方文档](https://pytorch.org/get-started/locally/)
+
+完成了相关库的下载之后，您可以使用如下指令来安装代码依赖：
+
 ```bash
 pip install numba	# 主要使用numba来进行加速
 pip install fastapi[all]	# 推理部署
@@ -52,7 +62,7 @@ __2. (可选)编译运行我们制作的CUDA推理__
 
 ```bash
 git clone https://github.com/SamuraiBUPT/KCF-tracking-sys.git
-cd MKCFup-tracking-sys
+cd KCF-tracking-sys
 pip install -e .
 ```
 
