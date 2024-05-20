@@ -290,5 +290,6 @@ def main(video_path):
                 continue
 
 
-test_video_path = 'video/Ke.mp4'
-main(test_video_path)
+if __name__ == '__main__':
+    test_video_path = 'video/Ke.mp4'
+    main(test_video_path)

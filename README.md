@@ -129,14 +129,16 @@ __1.2 bottleneck分析__
 
 __初步profile结果：__
 
-+ NormalizeAndTruncate里面调用了**func3.**  - rank No.3
-+ getFeatureMaps调用了：**func1, func2**  - rank No.4, No.7
-+ PCAFeatureMaps调用了：**func4**  - rank No.10
++ [x] NormalizeAndTruncate里面调用了**func3.**  - rank No.3
++ [x] getFeatureMaps调用了：**func1, func2**  - rank No.4, No.7
++ [x] PCAFeatureMaps调用了：**func4**  - rank No.10
 + 还有一个就是**gaussianCorrelation**  - rank No.5
   + 包括mulSpectrums
 + FFTD和dft其实是一伙的。（fftd函数内部调用的就是cv2.dft） - rank No.2
 
 
+
+width=48
 
 
 

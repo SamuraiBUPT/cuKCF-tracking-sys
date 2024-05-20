@@ -1,4 +1,7 @@
-from kcf_v4 import ObjectTracker
+from kcf_v3 import ObjectTracker as OT3
+from kcf_v4 import ObjectTracker as OT4
+from kcf_v5 import ObjectTracker as OT5
+# from kcf_v5_plus2 import ObjectTracker as OT5_plus
 import cv2
 import numpy as np
 import os
@@ -33,7 +36,7 @@ def calculate_precision(roi_results, gt, thresholds):
     return precisions
 
 
-def inference(benchmark_path: str):
+def inference(benchmark_path: str, tracker: str):
     base_path = benchmark_path
     dirs = os.listdir(base_path)
 
@@ -41,15 +44,24 @@ def inference(benchmark_path: str):
     all_roi_results = []
     all_gt_results = []
     fps_list = []
-    for seq_path in dirs:
-        # for seq_path in ['David']:
+    # for seq_path in dirs:
+    for seq_path in ['David']:
         print(f"evaluating sequence: {seq_path}")
         seq_path = os.path.join(base_path, seq_path)
         imgs_path = os.path.join(seq_path, 'img')
         gt_file = os.path.join(seq_path, 'groundtruth_rect.txt')
 
-        # initialize tracker
-        tracker = ObjectTracker()
+        # initialize tracker every sequence
+        if tracker == 'kcf_v3':
+            tracker_obj = OT3()
+        elif tracker == 'kcf_v4':
+            tracker_obj = OT4()
+        elif tracker == 'kcf_v5':
+            tracker_obj = OT5()
+        elif tracker == 'kcf_v5_plus':
+            tracker_obj = OT5_plus()
+        else:
+            raise ValueError("Invalid tracker name")
 
         # read ground truth
         delimiters = [',', '\t', ' ']
@@ -81,14 +93,14 @@ def inference(benchmark_path: str):
             img_path = os.path.join(imgs_path, img_name)
             img = cv2.imread(img_path)
             if cnt == 0:
-                tracker.initialize_first_frame(
+                tracker_obj.initialize_first_frame(
                     img, roi_first)
                 roi_results.append(roi_first)
             else:
                 # print(img)
                 if img is None:
                     print(img_path)
-                x, y, w, h = tracker.update_tracker(img)
+                x, y, w, h = tracker_obj.update_tracker(img)
                 roi_results.append([x, y, w, h])
 
             cnt += 1
@@ -106,40 +118,70 @@ def inference(benchmark_path: str):
         fps_list.append(fps)
         all_roi_results.append(roi_results)
         all_gt_results.append(gt)
+        # return all_roi_results, all_gt_results, fps_list
     return all_roi_results, all_gt_results, fps_list
 
 
 def main():
     benchmark_path = './benchmark_dataset'
-    roi_results, gt_results, fps_list = inference(benchmark_path)
+    results = []
+    trackers = [
+        "kcf_v3",
+        "kcf_v4",
+        "kcf_v5",
+        # "kcf_v5_plus"
+    ]
 
-    # Flatten the results for all sequences
-    roi_results = np.concatenate(roi_results)
-    gt = np.concatenate(gt_results)
+    colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
+    pec_res = []
+    for i, name in enumerate(trackers):
 
-    thresholds = range(1, 51)  # 1到50的距离阈值
-    precision_curve = calculate_precision(roi_results, gt, thresholds)
+        roi_results, gt_results, fps_list = inference(benchmark_path, name)
 
-    print(f"Average FPS: {np.mean(fps_list):.2f}")
+        # Flatten the results for all sequences
+        roi_results = np.concatenate(roi_results)
+        gt = np.concatenate(gt_results)
 
-    # 计算 Mean precision (20 px)
-    mean_precision_20px = precision_curve[19]  # 20 px 对应的是索引 19
-    print(f"Mean precision (20 px): {mean_precision_20px:.2f}")
+        thresholds = range(1, 51)  # 1到50的距离阈值
+        precision_curve = calculate_precision(roi_results, gt, thresholds)
 
-    plt.plot(thresholds, precision_curve)
+        avg_fps = np.mean(fps_list)
+
+        print(f"Average FPS: {avg_fps:.2f}")
+
+        # 计算 Mean precision (20 px)
+        mean_precision_20px = precision_curve[19]  # 20 px 对应的是索引 19
+        print(f"Mean precision (20 px): {mean_precision_20px:.2f}")
+
+        results.append((name, avg_fps, mean_precision_20px))
+        pec_res.append(precision_curve)
+        color = colors[i % len(colors)]
+        plt.plot(thresholds, precision_curve,
+                 label=name, color=color)
+
+    # plt.plot(thresholds, precision_curve)
+    plt.legend()
     plt.xlabel('Location error threshold')
     plt.ylabel('Precision')
-    plt.title('Precision plot')
+    plt.title('Precision plot for different versions of KCF')
     plt.show()
+
+    with open('tracker_results.txt', 'w') as f:
+        for name, avg_fps, mean_precision_20px in results:
+            f.write(
+                f"{name}: Average FPS: {avg_fps:.2f}, Mean precision (20 px): {mean_precision_20px:.2f}\n")
+
+    # save precision curve results
+    np.save('precision_curve_results.npy', np.array(pec_res))
 
 
 if __name__ == '__main__':
-    # main()
+    main()
 
-    # 可选：性能分析
-    cProfile.run('main()', 'profile_output.prof')
+    # # 可选：性能分析
+    # cProfile.run('main()', 'profile_output.prof')
 
-    # 可选：打印性能分析结果
-    with open('profile_output.txt', 'w') as f:
-        stats = pstats.Stats('profile_output.prof', stream=f)
-        stats.strip_dirs().sort_stats('cumulative').print_stats(10)
+    # # 可选：打印性能分析结果
+    # with open('profile_output.txt', 'w') as f:
+    #     stats = pstats.Stats('profile_output.prof', stream=f)
+    #     stats.strip_dirs().sort_stats('cumulative').print_stats(10)

@@ -24,3 +24,6 @@ server/uploads/videos/*
 
 # 所有的测试集
 KCF/benchmark_dataset/*
+KCF/data/Diving
+
+KCF/func_lib.py
