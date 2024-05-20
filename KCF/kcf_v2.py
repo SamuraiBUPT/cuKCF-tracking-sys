@@ -147,6 +147,8 @@ class ObjectTracker:
                 x = int(test_roi[0] - test_roi[2] // 2)
                 y = int(test_roi[1] - test_roi[3] // 2)
                 sub_image = image[y:y + test_roi[3], x:x + test_roi[2]]
+                if sub_image is None or sub_image.size == 0:
+                    continue
                 hsv_image = cv2.cvtColor(sub_image, cv2.COLOR_BGR2HSV)
                 test_hist = cv2.calcHist([hsv_image], [0, 1, 2], None, [
                                          16, 16, 16], [0, 180, 0, 256, 0, 256])
@@ -181,7 +183,15 @@ class ObjectTracker:
         y = int(cy - h // 2)
         # print(x, y, w, h)
 
+        if y <= 0:
+            y = 1
+        if x <= 0:
+            x = 1
+        # print(x, y, w, h)
         sub_image = image[y:y + h, x:x + w, :]
+
+        if sub_image is None or sub_image.size == 0:
+            return None
         resized_image = cv2.resize(
             src=sub_image, dsize=(self.patch_w, self.patch_h))
 

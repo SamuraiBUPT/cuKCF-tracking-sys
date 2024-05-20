@@ -1,7 +1,8 @@
+from kcf_v2 import ObjectTracker as OT2
 from kcf_v3 import ObjectTracker as OT3
 from kcf_v4 import ObjectTracker as OT4
 from kcf_v5 import ObjectTracker as OT5
-# from kcf_v5_plus2 import ObjectTracker as OT5_plus
+# from kcf_v5_plus import ObjectTracker as OT5_plus
 import cv2
 import numpy as np
 import os
@@ -44,8 +45,8 @@ def inference(benchmark_path: str, tracker: str):
     all_roi_results = []
     all_gt_results = []
     fps_list = []
-    # for seq_path in dirs:
-    for seq_path in ['David']:
+    for seq_path in dirs:
+        # for seq_path in ['Car1']:
         print(f"evaluating sequence: {seq_path}")
         seq_path = os.path.join(base_path, seq_path)
         imgs_path = os.path.join(seq_path, 'img')
@@ -58,8 +59,10 @@ def inference(benchmark_path: str, tracker: str):
             tracker_obj = OT4()
         elif tracker == 'kcf_v5':
             tracker_obj = OT5()
-        elif tracker == 'kcf_v5_plus':
-            tracker_obj = OT5_plus()
+        # elif tracker == 'kcf_v5_plus':
+        #     tracker_obj = OT5_plus()
+        elif tracker == 'kcf_v2':
+            tracker_obj = OT2()
         else:
             raise ValueError("Invalid tracker name")
 
@@ -126,6 +129,7 @@ def main():
     benchmark_path = './benchmark_dataset'
     results = []
     trackers = [
+        "kcf_v2",
         "kcf_v3",
         "kcf_v4",
         "kcf_v5",

@@ -1,0 +1,4 @@
+kcf_v2: Average FPS: 27.62, Mean precision (20 px): 0.18
+kcf_v3: Average FPS: 37.91, Mean precision (20 px): 0.18
+kcf_v4: Average FPS: 164.85, Mean precision (20 px): 0.61
+kcf_v5: Average FPS: 89.28, Mean precision (20 px): 0.64
