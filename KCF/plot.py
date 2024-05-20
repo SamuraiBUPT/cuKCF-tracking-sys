@@ -15,6 +15,8 @@ thresholds = range(1, 51)
 color = ['b', 'c', 'y', 'r', 'g', 'm', 'k']
 names = ["kcf_v2", "kcf_v3", "kcf_v4", "kcf_v5", "kcf_v5_cuda"]
 
+print(data)
+
 for i in range(result.shape[0]):
     plt.plot(thresholds, result[i], color[i], label=names[i])
 
@@ -24,5 +26,22 @@ plt.ylabel('Precision')
 plt.title('Precision plot for different versions of KCF')
 plt.show()
 
-FPSs = [27.62, 37.91, 164.85, 89.28, 53.05]
+FPS1 = [27.62, 37.91, 164.85, 89.28]
+FPS2 = [27.62, 37.91, 164.85, 89.28, 53.05]
 MeanPrecision_20px = [0.18, 0.18, 0.61, 0.64, 0.65]
+
+# 柱状图
+labels = ['KCF_v2', 'KCF_v3', 'KCF_v4', 'KCF_v5', 'KCF_v5_cuda']
+plt.figure(figsize=(10, 6))
+plt.bar(labels, FPS2, color='green')
+
+# 添加标题和标签
+plt.title('FPS Comparison of KCF Versions')
+plt.xlabel('KCF Versions')
+plt.ylabel('FPS')
+
+for i, v in enumerate(FPS2):
+    plt.text(i, v + 3, str(v), ha='center', va='bottom')
+
+# 显示图表
+plt.show()

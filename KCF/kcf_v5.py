@@ -2,7 +2,7 @@ import time
 import numpy as np
 import cv2
 # import fhog_v5 as fhog
-import fhog
+import KCF.fhog as fhog
 
 import sys
 PY3 = sys.version_info >= (3,)

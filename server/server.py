@@ -1,4 +1,4 @@
-# import mkcfup
+
 from fastapi import FastAPI, Request, File, UploadFile
 from zipfile import ZipFile
 from fastapi.templating import Jinja2Templates
@@ -10,11 +10,22 @@ import shutil
 import time
 import asyncio
 import cv2
-
 import uvicorn
+from kcf import ObjectTracker
+
+IMPORT_KCF = True
+if IMPORT_KCF:
+    import sys
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    # 获取项目的根路径
+    project_root = os.path.abspath(os.path.join(current_path, '..'))
+    # 将项目根路径添加到sys.path
+    sys.path.append(project_root)
+    import KCF
+
 
 # import kcf
-from kcf import ObjectTracker
+
 
 app = FastAPI()
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -91,7 +102,7 @@ async def process_coords(coords: Coords):
     x, y, w, h, img_path = coords.startX, coords.startY, coords.width, coords.height, coords.img_path
 
     base_path = os.path.dirname(img_path)
-    tracker = ObjectTracker()
+    tracker = KCF.ObjectTracker()
 
     processedImages = []
     try:
@@ -106,7 +117,9 @@ async def process_coords(coords: Coords):
                 img = cv2.imread(path)
                 x, y, w, h = tracker.update_tracker(img)
                 # print(x, y, w, h)
-                cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 255), 1)
+                cv2.rectangle(img, (int(x), int(y)), (int(
+                    x + w), int(y + h)), (0, 255, 255), 1)
+                # print(6)
                 cv2.imwrite(path, img)
                 processedImages.append(path)
     except Exception as e:

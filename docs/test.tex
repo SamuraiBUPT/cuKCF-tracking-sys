@@ -1,0 +1,28 @@
+%! Tex program = xelatex
+\documentclass[a4paper,12pt]{article}
+\usepackage{CJKutf8} % 确保使用 CJKutf8
+\usepackage{algorithm} 
+\usepackage{algpseudocode} 
+\begin{document}
+\begin{CJK}{UTF8}{gbsn}
+    \begin{algorithm}
+        \floatname{algorithm}{算法}
+        \setcounter{algorithm}{1}
+        \caption{提取图像patch}
+        \hspace*{0.02in} {\bf Input:} cv2.Image\\
+        \hspace*{0.02in} {\bf Output:} Features
+        \begin{algorithmic}[1]
+            \State // 提取划分图像的patch数目
+            \State n\_patches = 32
+
+            \State Features = np.zeros(cv2.Image.shape)
+
+            \For{i \textbf{in} n\_patches}
+            \State // 做一些特征提取工作，调用底层算子
+            \State sub\_feat = extract\_feature(cv2.Image[i])
+            \State Features[i] = sub\_feat
+            \EndFor
+        \end{algorithmic}
+    \end{algorithm}
+\end{CJK}
+\end{document}
