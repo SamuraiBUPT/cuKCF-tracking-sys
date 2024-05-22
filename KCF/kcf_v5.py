@@ -5,14 +5,10 @@ import cv2
 import KCF.fhog as fhog
 
 import sys
-PY3 = sys.version_info >= (3,)
-
-if PY3:
-    xrange = range
-
 
 # ffttools
 # 离散傅里叶变换、逆变换
+
 
 def fftd(img, backwards=False, byRow=False):
     # shape of img can be (m,n), (m,n,1) or (m,n,2)
@@ -308,7 +304,7 @@ class KCFTracker:
     def gaussianCorrelation(self, x1, x2):
         if self._hogfeatures:
             c = np.zeros((self.size_patch[0], self.size_patch[1]), np.float32)
-            for i in xrange(self.size_patch[2]):
+            for i in range(self.size_patch[2]):
                 x1aux = x1[i, :].reshape(
                     (self.size_patch[0], self.size_patch[1]))
                 x2aux = x2[i, :].reshape(
