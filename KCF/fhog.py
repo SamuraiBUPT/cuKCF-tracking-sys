@@ -9,7 +9,7 @@ FLT_EPSILON = 1e-07
 
 
 @jit
-def func1(dx, dy, boundary_x, boundary_y, height, width, numChannels):
+def hp_op1(dx, dy, boundary_x, boundary_y, height, width, numChannels):
     r = np.zeros((height, width), np.float32)
     alfa = np.zeros((height, width, 2), np.int32)
 
@@ -48,7 +48,7 @@ def func1(dx, dy, boundary_x, boundary_y, height, width, numChannels):
 
 
 @jit
-def func2(dx, dy, boundary_x, boundary_y, r, alfa, nearest, w, k, height, width, sizeX, sizeY, p, stringSize):
+def hp_op2(dx, dy, boundary_x, boundary_y, r, alfa, nearest, w, k, height, width, sizeX, sizeY, p, stringSize):
     mapp = np.zeros((sizeX * sizeY * p), np.float32)
     for i in range(sizeY):
         for j in range(sizeX):
@@ -78,7 +78,7 @@ def func2(dx, dy, boundary_x, boundary_y, r, alfa, nearest, w, k, height, width,
 
 
 @jit
-def func3(partOfNorm, mappmap, sizeX, sizeY, p, xp, pp):
+def hp_op3(partOfNorm, mappmap, sizeX, sizeY, p, xp, pp):
     newData = np.zeros((sizeY * sizeX * pp), np.float32)
     for i in range(1, sizeY + 1):
         for j in range(1, sizeX + 1):
@@ -122,7 +122,7 @@ def func3(partOfNorm, mappmap, sizeX, sizeY, p, xp, pp):
 
 
 @jit
-def func4(mappmap, p, sizeX, sizeY, pp, yp, xp, nx, ny):
+def hp_op4(mappmap, p, sizeX, sizeY, pp, yp, xp, nx, ny):
     newData = np.zeros((sizeX * sizeY * pp), np.float32)
     for i in range(sizeY):
         for j in range(sizeX):
@@ -176,13 +176,13 @@ def getFeatureMaps(image, k, mapp):
     boundary_y = np.sin(arg_vector)
 
     # 200x speedup
-    r, alfa = func1(dx, dy, boundary_x, boundary_y, height, width,
+    r, alfa = hp_op1(dx, dy, boundary_x, boundary_y, height, width,
                     numChannels)  # modify: I change alfa to 1-D array
 
-    # verify_func1(r, alfa, dx, dy, boundary_x, boundary_y, height, width, numChannels)  # test zone
+    # verify_hp_op1(r, alfa, dx, dy, boundary_x, boundary_y, height, width, numChannels)  # test zone
     # ~0.001s
 
-    # func2
+    # hp_op2
     nearest = np.ones((k), np.int32)
     nearest[0:k // 2] = -1
 
@@ -196,14 +196,14 @@ def getFeatureMaps(image, k, mapp):
 
     '''
     ### original implementation
-    mapp['map'] = func2(dx, dy, boundary_x, boundary_y, r, alfa, nearest, w, k, height, width, sizeX, sizeY, p, stringSize) #func2 without @jit  ###
+    mapp['map'] = hp_op2(dx, dy, boundary_x, boundary_y, r, alfa, nearest, w, k, height, width, sizeX, sizeY, p, stringSize) #hp_op2 without @jit  ###
     '''
     # 500x speedup
-    mapp['map'] = func2(dx, dy, boundary_x, boundary_y, r, alfa, nearest,
+    mapp['map'] = hp_op2(dx, dy, boundary_x, boundary_y, r, alfa, nearest,
                         w, k, height, width, sizeX, sizeY, p, stringSize)  # with @jit
 
     # notice: we will just use the data above, to make a cuda op
-    # verify_func2(mapp, dx, dy, boundary_x, boundary_y, r, alfa, nearest, w, k, height, width, sizeX, sizeY, p, stringSize)  # test zone
+    # verify_hp_op2(mapp, dx, dy, boundary_x, boundary_y, r, alfa, nearest, w, k, height, width, sizeX, sizeY, p, stringSize)  # test zone
     # ~0.001s
 
     return mapp
@@ -232,10 +232,10 @@ def normalizeAndTruncate(mapp, alfa):
 
     sizeX, sizeY = sizeX - 2, sizeY - 2
     # 30x speedup
-    newData = func3(partOfNorm, mapp['map'],
+    newData = hp_op3(partOfNorm, mapp['map'],
                     sizeX, sizeY, p, xp, pp)  # with @jit
 
-    # verify_func3(newData, partOfNorm, mapp['map'], sizeX, sizeY, p, xp, pp)  # test zone
+    # verify_hp_op3(newData, partOfNorm, mapp['map'], sizeX, sizeY, p, xp, pp)  # test zone
 
     # truncation
     newData[newData > alfa] = alfa
@@ -260,12 +260,8 @@ def PCAFeatureMaps(mapp):
     nx = 1.0 / np.sqrt(xp * 2)
     ny = 1.0 / np.sqrt(yp)
     # 190x speedup
-    newData = func4(mapp['map'], p, sizeX, sizeY,
-                    pp, yp, xp, nx, ny)  # with @jit
-    ###
-
-    # verify_func4(newData, mapp['map'], p, sizeX, sizeY, pp, yp, xp, nx, ny)  # test zone
-    # precision problem, jump this test
+    newData = hp_op4(mapp['map'], p, sizeX, sizeY,
+                    pp, yp, xp, nx, ny) 
 
     mapp['numFeatures'] = pp
     mapp['map'] = newData
