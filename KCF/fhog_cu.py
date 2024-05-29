@@ -33,7 +33,7 @@ def getFeatureMaps(image, k, mapp):
     mapp['sizeY'] = sizeY
     mapp['numFeatures'] = p
     mapp['map'] = torch.zeros(
-        (mapp['sizeX'] * mapp['sizeY'] * mapp['numFeatures']), dtype=torch.float32, device=device)
+        (mapp['sizeX'] * mapp['sizeY'] * mapp['numFeatures']), dtype=torch.float32, device=device)  # (sizeX * sizeY * p)
 
     # np.float32(...) is necessary
     dx = torch.tensor(cv2.filter2D(np.float32(image), -1, kernel), device=device)
@@ -42,7 +42,7 @@ def getFeatureMaps(image, k, mapp):
     arg_vector = np.arange(
         NUM_SECTOR + 1).astype(np.float32) * np.pi / NUM_SECTOR
     boundary_x = torch.tensor(np.cos(arg_vector), device=device)
-    boundary_y = torch.tensor(np.sin(arg_vector), device=device)
+    boundary_y = torch.tensor(np.sin(arg_vector), device=device)    # this can be reused multiple times
 
     r2 = torch.zeros((height, width), dtype=torch.float32, device=device)
     alfa2 = torch.zeros((height, width, 2), dtype=torch.int32, device=device)

@@ -68,6 +68,12 @@ pip install -e .
 
 这会自动开始编译C++文件。
 
+需要注意的是，编译需要的环境是：
+
++ Linux (Our: Ubuntu 20.04)
++ CMake
++ libtorch
+
 
 
 __3. 启动推理__
@@ -140,6 +146,56 @@ __初步profile结果：__
 + 还有一个就是**gaussianCorrelation**  - rank No.5
   + 包括mulSpectrums
 + FFTD和dft其实是一伙的。（fftd函数内部调用的就是cv2.dft） - rank No.2
+
+
+
+# 实验结果
+
+## Precision
+
+![image-20240529180603736](docs/precision.png)
+
+The `kcf_v5_cuda` reached the highest level of precision. **[0.732]**
+
+
+
+__Reason__
+
+![image-20240529180930812](docs/precision-reason.png)
+
+This is a log file when I was developing. The cuda version has higher float precision than python implementation. (Language reason, not algorithm reason.)
+
+
+
+
+
+## Inference Speed
+
+![image-20240529180752610](docs/speed.png)
+
+Unluckily, the cuda optimized version has low performance in inferencing.
+
+
+
+__Reason__
+
+![image-20240529181045329](docs/speed-reason.png)
+
+We miscalculated cuda usage and did not balance IO losses against computing benefits. Each time the data was copied to GPU and copied back. Plenty of time was wasted in IO, not computing.
+
+
+
+# Conclusion
+
+We have achieved the goal:
+
++ Implement the KCF by ourself
++ Reach the level where the original paper was.
++ Explore engineering experiences, not just algorithm.
+
+
+
+> It's a little bit disappointed when we see the result. But it is worth the price.
 
 
 
